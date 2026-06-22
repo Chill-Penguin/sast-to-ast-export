@@ -21,6 +21,7 @@ const (
 	projectsActiveSinceArg  = "projects-active-since"
 	debugArg                = "debug"
 	verboseArg              = "verbose"
+	skipTLSVerifyArg        = "skip-tls-verify"
 	projectsIDs             = "project-id"
 	teamName                = "project-team"
 	queryMapping            = "query-mapping"
@@ -137,6 +138,7 @@ func init() {
 	rootCmd.Flags().IntP(projectsActiveSinceArg, "", emptyProjectsActiveSince, projectsActiveSinceUsage)
 	rootCmd.Flags().Bool(debugArg, false, "activate debug mode")
 	rootCmd.Flags().BoolP(verboseArg, "v", false, "enable verbose logging to console")
+	rootCmd.Flags().Bool(skipTLSVerifyArg, false, "skip SAST TLS certificate verification")
 	rootCmd.Flags().Bool(nestedTeams, false, "include original team structure without flattening")
 	rootCmd.Flags().IntVarP(
 		&simIDVersion,

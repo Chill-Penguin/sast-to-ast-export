@@ -15,6 +15,7 @@ type Args struct {
 	ProjectsActiveSince         int
 	IsDefaultProjectActiveSince bool
 	Debug                       bool
+	SkipTLSVerify               bool
 	DBConnectionString,
 	ProjectsIDs,
 	TeamName string

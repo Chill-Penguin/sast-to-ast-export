@@ -3,6 +3,7 @@ package internal
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"encoding/xml"
 	"fmt"
@@ -84,6 +85,7 @@ func RunExport(args *Args) error {
 		Str("projectTeam", args.TeamName).
 		Bool("nestedTeams", args.NestedTeams).
 		Bool("debug", args.Debug).
+		Bool("skipTLSVerify", args.SkipTLSVerify).
 		Int("consumers", consumerCount).
 		Msg("starting export")
 
@@ -92,9 +94,9 @@ func RunExport(args *Args) error {
 		log.Fatal().Err(err).Msg("Failed to initialize query rename mapping")
 	}
 
-	retryHTTPClient := getRetryHTTPClient()
+	sastHTTPClient := getRetryHTTPClient(args.SkipTLSVerify)
 	// create api client
-	client, clientErr := rest.NewSASTClient(args.URL, retryHTTPClient)
+	client, clientErr := rest.NewSASTClient(args.URL, sastHTTPClient)
 	if clientErr != nil {
 		return errors.Wrap(clientErr, "could not create REST client")
 	}
@@ -137,7 +139,7 @@ func RunExport(args *Args) error {
 		log.Error().Err(err).Msg("failed to fetch custom extensions")
 	}
 
-	soapClient := soap.NewClient(args.URL, client.Token, retryHTTPClient)
+	soapClient := soap.NewClient(args.URL, client.Token, sastHTTPClient)
 	sourceRepo := sourcefile.NewRepo(soapClient)
 	methodLineRepo := methodline.NewRepo(soapClient)
 	queriesRepo := queries.NewRepo(soapClient)
@@ -149,7 +151,7 @@ func RunExport(args *Args) error {
 		return errors.Wrap(fetchInstallationErr, "could not fetch installation data")
 	}
 
-	astQueryMappingProvider, astQueryMappingProviderErr := querymapping.NewProvider(args.QueryMappingFile, retryHTTPClient)
+	astQueryMappingProvider, astQueryMappingProviderErr := querymapping.NewProvider(args.QueryMappingFile, getRetryHTTPClient(false))
 	if astQueryMappingProviderErr != nil {
 		return errors.Wrap(astQueryMappingProviderErr, "could not create AST query mapping provider")
 	}
@@ -1063,9 +1065,18 @@ func getPresetData(soapClient interfaces.PresetProvider, presetID int) ([]byte, 
 	return presetData, nil
 }
 
-func getRetryHTTPClient() *retryablehttp.Client {
+func getRetryHTTPClient(skipTLSVerify bool) *retryablehttp.Client {
+	httpClient := cleanhttp.DefaultPooledClient()
+	if skipTLSVerify {
+		if transport, ok := httpClient.Transport.(*http.Transport); ok {
+			transport = transport.Clone()
+			transport.TLSClientConfig = &tls.Config{InsecureSkipVerify: true} //nolint:gosec
+			httpClient.Transport = transport
+		}
+	}
+
 	return &retryablehttp.Client{
-		HTTPClient:   cleanhttp.DefaultPooledClient(),
+		HTTPClient:   httpClient,
 		Logger:       nil,
 		RetryWaitMin: httpRetryWaitMin,
 		RetryWaitMax: httpRetryWaitMax,

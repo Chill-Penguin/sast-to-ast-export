@@ -3,6 +3,7 @@ package internal
 import (
 	"encoding/xml"
 	"fmt"
+	"net/http"
 	"os"
 	"path"
 	"testing"
@@ -60,6 +61,28 @@ type teamsExpect struct {
 	SamlTeamMappings mockExpectProps
 	LdapServers      mockExpectProps
 	SamlServers      mockExpectProps
+}
+
+func TestGetRetryHTTPClientSkipTLSVerify(t *testing.T) {
+	t.Run("default verifies certificates", func(t *testing.T) {
+		client := getRetryHTTPClient(false)
+		transport, ok := client.HTTPClient.Transport.(*http.Transport)
+		assert.True(t, ok)
+		if !ok {
+			return
+		}
+		assert.Nil(t, transport.TLSClientConfig)
+	})
+
+	t.Run("skip tls verify disables certificate verification", func(t *testing.T) {
+		client := getRetryHTTPClient(true)
+		transport, ok := client.HTTPClient.Transport.(*http.Transport)
+		assert.True(t, ok)
+		if !ok || !assert.NotNil(t, transport.TLSClientConfig) {
+			return
+		}
+		assert.True(t, transport.TLSClientConfig.InsecureSkipVerify)
+	})
 }
 
 func fetchUsersSetupExpects(client *mock_integration_rest.MockClient, expect *usersExpect) {

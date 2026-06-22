@@ -37,6 +37,10 @@ func GetArgs(cmd *cobra.Command, productName string) internal.Args {
 	if err != nil {
 		panic(err)
 	}
+	args.SkipTLSVerify, err = cmd.Flags().GetBool(skipTLSVerifyArg)
+	if err != nil {
+		panic(err)
+	}
 	args.ProjectsActiveSince, err = cmd.Flags().GetInt(projectsActiveSinceArg)
 	if err != nil {
 		panic(err)
